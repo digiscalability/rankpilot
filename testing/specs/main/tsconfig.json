@@ -1,0 +1,21 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "allowSyntheticDefaultImports": true,
+    "lib": ["es2022", "dom"],
+    "baseUrl": "../../.."
+  },
+  "include": [
+    "../src/**/*.ts",
+    "../src/**/*.tsx",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "../playwright.config.ts",
+    "../playwright.config.*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "build", "lib"]
+}

@@ -1,0 +1,385 @@
+@import "./mobile-touch-targets.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body {
+  font-family: "PT Sans", sans-serif;
+  height: 100%;
+  /* Fallback then modern dynamic viewport for mobile chrome/safari */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+html {
+  height: 100%;
+  /* Fallback then modern dynamic viewport for mobile chrome/safari */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Headings use headline font for consistent hierarchy */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Space Grotesk", sans-serif;
+}
+
+@layer base {
+  :root {
+    /* Neutral base (cool gray with slight blue for professional tone) */
+    --background: 215 25% 97%; /* near-white with cool tint */
+    --foreground: 222 41% 14%; /* slate-900-ish for strong readability */
+
+    --card: 0 0% 100%;
+    --card-foreground: var(--foreground);
+
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--foreground);
+
+    /* Brand primary (refined blue) */
+    --primary: 221 83% 53%; /* professional blue */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 220 14% 96%; /* subtle slate-100 */
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 256 100% 67%; /* accessible indigo accent */
+    --accent-foreground: 232 100% 98%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Info and Error (explicit tokens used across UI) */
+    --info: 217 91% 60%;
+    --info-foreground: 210 40% 98%;
+    --error: 0 84% 60%;
+    --error-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 96%;
+    --ring: var(--primary);
+
+    --radius: 0.5rem;
+
+    --chart-1: 221 83% 53%;
+    --chart-2: 256 100% 67%;
+    --chart-3: 172 66% 40%;
+    --chart-4: 24 94% 50%;
+    --chart-5: 0 84% 60%;
+
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 214 32% 91%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 256 100% 67%;
+    --sidebar-accent-foreground: 232 100% 98%;
+    --sidebar-border: 215 28% 17%;
+    --sidebar-ring: 221 83% 53%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 355 100% 97%;
+    --warning: 32 95% 44%;
+    --warning-foreground: 210 40% 98%;
+
+    /* Suite gradient accent tokens */
+    --gradient-seo-from: hsl(var(--primary) / 0.25);
+    --gradient-seo-to: hsl(var(--primary) / 0.05);
+    --gradient-sales-from: hsl(var(--warning) / 0.3);
+    --gradient-sales-to: hsl(var(--warning) / 0.05);
+    --gradient-marketing-from: hsl(var(--accent) / 0.3);
+    --gradient-marketing-to: hsl(var(--accent) / 0.05);
+    --gradient-finance-from: hsl(var(--success) / 0.3);
+    --gradient-finance-to: hsl(var(--success) / 0.05);
+
+    /* Alias CSS variables expected across components (500 scale) */
+    --color-primary-500: hsl(var(--primary));
+    --color-secondary-500: hsl(var(--secondary));
+    --color-accent-500: hsl(var(--accent));
+    --color-success-500: hsl(var(--success));
+    --color-warning-500: hsl(var(--warning));
+    --color-destructive-500: hsl(var(--destructive));
+    /* Minimal gray alias to unblock components referencing gray-500 */
+    --color-gray-500: hsl(210 10% 60%);
+  }
+
+  .dark {
+    --background: 222 84% 5%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 84% 5%;
+    --card-foreground: var(--foreground);
+
+    --popover: 222 84% 5%;
+    --popover-foreground: var(--foreground);
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 84% 5%;
+
+    --secondary: 217 33% 18%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 256 100% 67%;
+    --accent-foreground: 232 100% 98%;
+
+    --destructive: 0 63% 40%;
+    --destructive-foreground: 210 40% 98%;
+
+    --info: 217 91% 60%;
+    --info-foreground: 222 84% 5%;
+    --error: 0 72% 51%;
+    --error-foreground: 210 40% 98%;
+
+    --border: 217 33% 18%;
+    --input: 217 33% 14%;
+    --ring: var(--primary);
+
+    --chart-1: 217 91% 60%;
+    --chart-2: 256 100% 67%;
+    --chart-3: 172 66% 44%;
+    --chart-4: 20 90% 60%;
+    --chart-5: 0 72% 51%;
+
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 214 32% 91%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 84% 5%;
+    --sidebar-accent: 256 100% 67%;
+    --sidebar-accent-foreground: 232 100% 98%;
+    --sidebar-border: 215 28% 17%;
+    --sidebar-ring: 217 91% 60%;
+
+    --success: 142 76% 45%;
+    --success-foreground: 144 80% 10%;
+    --warning: 32 90% 55%;
+    --warning-foreground: 222 84% 5%;
+
+    --gradient-seo-from: hsl(var(--primary) / 0.35);
+    --gradient-seo-to: hsl(var(--primary) / 0.1);
+    --gradient-sales-from: hsl(var(--warning) / 0.4);
+    --gradient-sales-to: hsl(var(--warning) / 0.12);
+    --gradient-marketing-from: hsl(var(--accent) / 0.4);
+    --gradient-marketing-to: hsl(var(--accent) / 0.12);
+    --gradient-finance-from: hsl(var(--success) / 0.4);
+    --gradient-finance-to: hsl(var(--success) / 0.12);
+
+    /* Dark mode aliases keep the same token mapping; underlying HSLs differ per mode */
+    --color-primary-500: hsl(var(--primary));
+    --color-secondary-500: hsl(var(--secondary));
+    --color-accent-500: hsl(var(--accent));
+    --color-success-500: hsl(var(--success));
+    --color-warning-500: hsl(var(--warning));
+    --color-destructive-500: hsl(var(--destructive));
+    --color-gray-500: hsl(210 10% 55%);
+  }
+}
+
+/* Subtle elevation for form controls inside cards */
+.bg-card input:not([type="checkbox"]):not([type="radio"]),
+.bg-card textarea,
+.bg-card select {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  transition: box-shadow 150ms ease;
+}
+
+.bg-card input:hover:not([type="checkbox"]):not([type="radio"]),
+.bg-card textarea:hover,
+.bg-card select:hover {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+
+.dark .bg-card input:not([type="checkbox"]):not([type="radio"]),
+.dark .bg-card textarea,
+.dark .bg-card select {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Global focus ring aligned to tokens */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.35);
+  }
+  .theme-high-contrast :focus-visible {
+    box-shadow: 0 0 0 3px hsl(var(--foreground));
+  }
+
+  /* Text selection using brand */
+  ::selection {
+    background: hsl(var(--primary) / 0.24);
+    color: hsl(var(--primary-foreground));
+  }
+}
+
+@layer components {
+  /* Section spacing tokens */
+  :root {
+    --space-section: 6rem; /* baseline vertical rhythm ≈ mt-24 */
+    --space-section-lg: 8rem; /* larger feature break ≈ mt-32 */
+    --space-section-sm: 4rem; /* compact variant */
+  }
+
+  .section-gap {
+    margin-top: var(--space-section);
+  }
+  .section-gap-lg {
+    margin-top: var(--space-section-lg);
+  }
+  .section-gap-sm {
+    margin-top: var(--space-section-sm);
+  }
+
+  /* Micro interaction helpers */
+  .micro-hover-lift {
+    @apply transition-transform duration-300 will-change-transform;
+  }
+  .micro-hover-lift:hover {
+    transform: translateY(-4px);
+  }
+  .micro-fade-in {
+    @apply opacity-0 animate-[fadeIn_0.6s_ease_forwards];
+  }
+  @keyframes fadeIn {
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Provide a no-motion utility gated by reduced-motion flag */
+  .reduced-motion .micro-hover-lift,
+  .reduced-motion .micro-fade-in,
+  .reduced-motion [data-animated="true"] {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .badge-glow {
+    @apply relative;
+  }
+  .badge-glow::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.05);
+    opacity: 0;
+    transition:
+      box-shadow 0.6s ease,
+      opacity 0.6s ease;
+  }
+  .badge-glow:hover::after {
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.06);
+    opacity: 1;
+  }
+
+  /* Mobile Touch Target Improvements */
+  .mobile-touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Tool Navigation Links - Mobile Friendly */
+  .tool-nav-link {
+    @apply min-h-[44px] px-4 py-3;
+  }
+
+  /* Button Touch Targets */
+  .btn-mobile {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Apply mobile touch targets to all navigation links on mobile */
+  @media (max-width: 768px) {
+    /* Main navigation links in sidebar */
+    nav a[href] {
+      min-height: 44px !important;
+      padding-top: 12px !important;
+      padding-bottom: 12px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+
+    /* Navigation link text spacing */
+    nav a[href] span {
+      line-height: 1.2 !important;
+    }
+
+    /* Tool links specifically */
+    a[href*="/link-view"],
+    a[href*="/serp-view"],
+    a[href*="/keyword-tool"],
+    a[href*="/seo-audit"],
+    a[href*="/content-analyzer"],
+    a[href*="/competitors"] {
+      min-height: 44px !important;
+      padding: 12px 16px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+
+    /* Card-based Tool Layout for Mobile */
+    .tool-card {
+      @apply p-6 min-h-[80px] rounded-lg border shadow-sm bg-card hover:shadow-md transition-all;
+    }
+
+    .tool-card-icon {
+      @apply h-8 w-8 mb-2;
+    }
+
+    .tool-card-title {
+      @apply text-lg font-semibold mb-1;
+    }
+
+    .tool-card-description {
+      @apply text-sm text-muted-foreground;
+    }
+
+    /* Larger spacing between tool cards */
+    .tool-grid {
+      @apply grid gap-4 grid-cols-1 sm:grid-cols-2;
+    }
+
+    /* Form elements touch targets */
+    .form-input-mobile {
+      @apply min-h-[44px] px-4 py-3;
+    }
+
+    .form-button-mobile {
+      @apply min-h-[48px] px-6 py-3 text-base;
+    }
+
+    /* Button improvements */
+    button {
+      min-height: 44px !important;
+    }
+
+    input[type="submit"],
+    input[type="button"] {
+      min-height: 44px !important;
+    }
+  }
+
+  /* Enhanced sidebar navigation for desktop */
+  @media (min-width: 768px) {
+    .sidebar-nav-link {
+      @apply min-h-[40px] px-3 py-2;
+    }
+  }
+}

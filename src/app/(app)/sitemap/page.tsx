@@ -1,0 +1,459 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { motion } from "framer-motion";
+import {
+  BarChart3,
+  BookOpen,
+  CreditCard,
+  ExternalLink,
+  FileText,
+  HelpCircle,
+  Home,
+  Mail,
+  Phone,
+  Shield,
+  Target,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
+import Link from "next/link";
+
+const sitemapSections = [
+  {
+    title: "Main Navigation",
+    icon: <Home className="h-5 w-5" />,
+    links: [
+      { name: "Home", href: "/", description: "Welcome to RankPilot" },
+      {
+        name: "Dashboard",
+        href: "/dashboard",
+        description: "Your SEO command center",
+      },
+      { name: "Pricing", href: "/pricing", description: "Choose your plan" },
+      {
+        name: "Features",
+        href: "/features",
+        description: "Explore our capabilities",
+      },
+      { name: "About", href: "/about", description: "Learn about our mission" },
+      {
+        name: "Contact",
+        href: "/contact",
+        description: "Get in touch with us",
+      },
+    ],
+  },
+  {
+    title: "SEO Tools",
+    icon: <BarChart3 className="h-5 w-5" />,
+    links: [
+      {
+        name: "Voice Agent",
+        href: "/voice",
+        description:
+          "Call prospects and auto-book appointments (feature gated)",
+      },
+      {
+        name: "Link Analysis",
+        href: "/link-view",
+        description: "Analyze backlink quality and opportunities",
+      },
+      {
+        name: "SERP Analysis",
+        href: "/serp-view",
+        description: "Understand search engine results",
+      },
+      {
+        name: "Keyword Research",
+        href: "/keyword-tool",
+        description: "Discover valuable keywords",
+      },
+      {
+        name: "Site Audit",
+        href: "/seo-audit",
+        description: "Comprehensive website analysis",
+      },
+      {
+        name: "Competitor Analysis",
+        href: "/competitors",
+        description: "Spy on your competition",
+      },
+      {
+        name: "Performance",
+        href: "/performance",
+        description: "Monitor key site performance metrics",
+      },
+    ],
+  },
+  {
+    title: "Account & Billing",
+    icon: <CreditCard className="h-5 w-5" />,
+    links: [
+      {
+        name: "Profile Settings",
+        href: "/profile",
+        description: "Manage your account information",
+      },
+      {
+        name: "Billing Settings",
+        href: "/settings/billing",
+        description: "Manage subscription and payments",
+      },
+      {
+        name: "Team Management",
+        href: "/team",
+        description: "Invite and manage team members",
+      },
+      {
+        name: "API Keys",
+        href: "/settings/api",
+        description: "Generate and manage API access",
+      },
+      // Notifications/Security pages are not available yet
+    ],
+  },
+  {
+    title: "Support & Help",
+    icon: <HelpCircle className="h-5 w-5" />,
+    links: [
+      {
+        name: "Help Center",
+        href: "/help",
+        description: "Find answers to common questions",
+      },
+      {
+        name: "Documentation",
+        href: "/docs",
+        description: "API docs and integration guides",
+      },
+      {
+        name: "Video Tutorials",
+        href: "/tutorials",
+        description: "Step-by-step video guides",
+      },
+      // Community/Feedback/Bug routes not available yet
+    ],
+  },
+  {
+    title: "Legal & Compliance",
+    icon: <Shield className="h-5 w-5" />,
+    links: [
+      {
+        name: "Terms of Service",
+        href: "/terms",
+        description: "Our terms and conditions",
+      },
+      {
+        name: "Privacy Policy",
+        href: "/privacy",
+        description: "How we protect your data",
+      },
+      {
+        name: "Cookie Policy",
+        href: "/cookies",
+        description: "Our use of cookies",
+      },
+      {
+        name: "Security Policy",
+        href: "/security",
+        description: "Our security practices",
+      },
+      // GDPR/Acceptable Use pages not available yet
+    ],
+  },
+  {
+    title: "Resources",
+    icon: <BookOpen className="h-5 w-5" />,
+    links: [
+      {
+        name: "Blog",
+        href: "/blog",
+        description: "SEO tips, tricks, and industry news",
+      },
+      {
+        name: "Case Studies",
+        href: "/case-studies",
+        description: "Success stories from our users",
+      },
+      {
+        name: "Guides",
+        href: "/guides",
+        description: "Complete guide to SEO",
+      },
+      // Specific guide deep-links not available yet
+    ],
+  },
+  {
+    title: "Company",
+    icon: <Users className="h-5 w-5" />,
+    links: [
+      {
+        name: "About Us",
+        href: "/about",
+        description: "Our story and mission",
+      },
+      {
+        name: "Team",
+        href: "/team",
+        description: "Meet the people behind RankPilot",
+      },
+      {
+        name: "Careers",
+        href: "/careers",
+        description: "Join our growing team",
+      },
+      // Press/Partners/Affiliates pages not available yet
+    ],
+  },
+  {
+    title: "Integrations",
+    icon: <Zap className="h-5 w-5" />,
+    links: [
+      {
+        name: "Integration Hub",
+        href: "/integration-hub",
+        description: "Explore available integrations",
+      },
+      {
+        name: "All Integrations",
+        href: "/integrations",
+        description: "Browse integration catalog",
+      },
+    ],
+  },
+];
+
+const quickActions = [
+  {
+    name: "Start Free Trial",
+    href: "/register",
+    icon: <Target className="h-4 w-4" />,
+    variant: "default" as const,
+  },
+  {
+    name: "View Pricing",
+    href: "/pricing",
+    icon: <TrendingUp className="h-4 w-4" />,
+    variant: "outline" as const,
+  },
+  {
+    name: "Contact Sales",
+    href: "/contact?type=sales",
+    icon: <Phone className="h-4 w-4" />,
+    variant: "outline" as const,
+  },
+  {
+    name: "Get Support",
+    href: "/support",
+    icon: <Mail className="h-4 w-4" />,
+    variant: "outline" as const,
+  },
+];
+
+const popularPages = [
+  { name: "Link Analysis Tool", href: "/tools/link-analysis", visits: "12.3k" },
+  { name: "SERP Checker", href: "/tools/serp-analysis", visits: "8.7k" },
+  { name: "Pricing Plans", href: "/pricing", visits: "15.2k" },
+  { name: "API Documentation", href: "/api-docs", visits: "5.4k" },
+  { name: "SEO Blog", href: "/blog", visits: "9.8k" },
+  { name: "Help Center", href: "/help", visits: "7.1k" },
+];
+
+export default function Sitemap() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8 sm:mb-10"
+        >
+          <h1 className="text-3xl sm:text-4xl font-bold font-headline mb-3">
+            Site Map
+          </h1>
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
+            Explore all pages and features available on RankPilot. Find exactly
+            what you're looking for.
+          </p>
+        </motion.div>
+
+        {/* Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <Card>
+            <CardHeader className="py-4 pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Target className="h-5 w-5" />
+                Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-2 pb-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {quickActions.map((action, index) => (
+                  <Link key={index} href={action.href}>
+                    <Button
+                      variant={action.variant}
+                      className="w-full h-auto p-3 flex flex-col gap-1"
+                    >
+                      {action.icon}
+                      <span className="text-[11px] sm:text-xs font-medium leading-tight">
+                        {action.name}
+                      </span>
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Popular Pages */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-8"
+        >
+          <Card>
+            <CardHeader className="py-4 pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <TrendingUp className="h-5 w-5" />
+                Popular Pages
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-2 pb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {popularPages.map((page, index) => (
+                  <Link key={index} href={page.href}>
+                    <div className="p-3 rounded-md border hover:bg-muted/50 transition-colors group">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-sm group-hover:text-primary transition-colors">
+                          {page.name}
+                        </span>
+                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <span>{page.visits}</span>
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Main Sitemap */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {sitemapSections.map((section, sectionIndex) => (
+            <motion.div
+              key={sectionIndex}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + sectionIndex * 0.1 }}
+            >
+              <Card className="h-full">
+                <CardHeader className="py-4 pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    {section.icon}
+                    {section.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2 pb-4">
+                  <div className="space-y-3">
+                    {section.links.map((link, linkIndex) => (
+                      <div key={linkIndex}>
+                        <Link href={link.href}>
+                          <div className="group p-2 rounded-md hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="min-w-0">
+                                <h4 className="font-medium text-sm group-hover:text-primary transition-colors truncate">
+                                  {link.name}
+                                </h4>
+                                <p className="hidden sm:block text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">
+                                  {link.description}
+                                </p>
+                              </div>
+                              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                            </div>
+                          </div>
+                        </Link>
+                        {linkIndex < section.links.length - 1 && (
+                          <Separator className="my-1" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Footer CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="mt-12 text-center"
+        >
+          <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20">
+            <CardContent className="p-6 sm:p-8">
+              <h2 className="text-xl sm:text-2xl font-bold mb-3">
+                Can't Find What You're Looking For?
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground mb-5 max-w-md mx-auto leading-relaxed">
+                Our support team is here to help you navigate RankPilot and find
+                exactly what you need.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href="/search">
+                  <Button
+                    size="sm"
+                    className="sm:size-auto sm:px-6 sm:py-5 sm:text-base text-sm px-4 py-4"
+                  >
+                    <FileText className="h-4 w-4 mr-2" /> Search Site
+                  </Button>
+                </Link>
+                <Link href="/contact">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="sm:size-auto sm:px-6 sm:py-5 sm:text-base text-sm px-4 py-4"
+                  >
+                    <Mail className="h-4 w-4 mr-2" /> Contact Support
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Last Updated */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="mt-6 text-center text-xs sm:text-sm text-muted-foreground"
+        >
+          <p>Last updated: {new Date().toLocaleDateString()}</p>
+          <p>
+            Found a broken link?{" "}
+            <Link href="/contact" className="text-primary hover:underline">
+              Let us know
+            </Link>
+          </p>
+        </motion.div>
+      </div>
+    </div>
+  );
+}

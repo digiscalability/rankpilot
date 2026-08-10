@@ -1,0 +1,24 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "lib": ["es2022", "dom"],
+    "baseUrl": ".",
+    "outDir": "lib",
+    "sourceMap": true
+  },
+  "compileOnSave": true,
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "lib",
+    "dist",
+    "build",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "src/test/**"
+  ]
+}

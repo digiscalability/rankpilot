@@ -1,0 +1,56 @@
+import { adminDb } from "@/lib/firebase-admin";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(_req: NextRequest): Promise<NextResponse> {
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.CI_PRODUCTION === "1"
+  ) {
+    return NextResponse.json(
+      { ok: false, reason: "disabled" },
+      { status: 404 }
+    );
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const ref = adminDb.collection("kpiDaily").doc(today);
+
+  try {
+    await adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists) return; // no-op if already seeded
+
+      const doc: Record<string, unknown> = {
+        date: today,
+        provenanceCoveragePct: 95,
+        p95LatencyOverall: 450,
+        crawlerAggregateAdoptionPct: 70,
+        semanticMapAggregateAdoptionPct: 68,
+        aiCostEstimate: 1.23,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        // Provide initial smoothing = metric values so deltas start at 0
+        smoothedProvenance: 95,
+        smoothedLatencyP95: 450,
+        smoothedCrawlerAdoption: 70,
+        smoothedSemanticAdoption: 68,
+        // Include MA7 fields mirroring values for immediate delta badge availability
+        ma7Provenance: 95,
+        ma7LatencyP95: 450,
+        ma7CrawlerAdoption: 70,
+        ma7SemanticAdoption: 68,
+      };
+
+      // Narrow write: Firestore accepts a plain object map; retain unknown values as-is.
+      tx.set(ref, doc as Record<string, unknown>);
+    });
+
+    return NextResponse.json({ ok: true, seeded: true, date: today });
+  } catch (e: unknown) {
+    const message = (e as Error)?.message ?? "seed_failed";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}

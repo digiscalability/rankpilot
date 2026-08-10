@@ -1,0 +1,287 @@
+# =================================
+# RankPilot (Studio) - .gitignore
+# Optimized for Next.js 15, Firebase, Playwright Testing
+# =================================
+
+# Node.js Dependencies
+# --------------------
+node_modules/
+.pnp/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Next.js Build Output & Cache
+# ----------------------------
+.next/
+out/
+build/
+dist/
+dist/brain
+.vercel/
+.turbo/
+.swc/
+
+# TypeScript Build
+# ---------------
+*.tsbuildinfo
+next-env.d.ts
+*.d.ts.map
+tsconfig.tsbuildinfo
+
+# Testing & QA (Playwright)
+# -------------------------
+test-results/
+playwright-report/
+test-snapshots/
+testing/results/
+testing/reports/
+artifacts/brain/*.json
+# TypeScript snapshot / metrics artifacts (prevent re-adding cleaned large files)
+artifacts/tsc-*.txt
+artifacts/lint-heatmap.json
+artifacts/metrics-summary.json
+coverage/
+.nyc_output/
+*.spec.js.map
+*.test.js.map
+
+# Security & Sensitive Files
+# --------------------------
+masterKeys.md
+.github/masterKeys.md
+**/masterKeys.md
+mcp.json
+mcp.*.json
+state.json
+**/state.json
+*.pem
+*.key
+*.env.local
+*.env.production
+*.env.staging
+serviceAccount.json
+serviceAccount.*.json
+**/serviceAccount.json
+**/serviceAccount.*.json
+**/*key*.md
+**/*secret*.md
+**/*token*.md
+
+# Integration & Configuration Files (contain secrets)
+# --------------------------------------------------
+docs/integrations/
+**/integrations/
+# Source integration code (routes, libs, pages) MUST be tracked — the rule above targets docs/config:
+!src/lib/integrations/
+!src/lib/integrations/**
+!src/app/api/integrations/
+!src/app/api/integrations/**
+!src/app/(app)/integrations/
+!src/app/(app)/integrations/**
+*MCP*
+*mcp*
+**/*MCP*
+**/*mcp*
+
+# Test Debug Files
+# ---------------
+debug-*.png
+error-*.png
+connectivity-*.png
+basic-health-check.png
+body-visibility-debug.png
+test-failed-*.png
+
+# Firebase & Cloud Services
+# -------------------------
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+firebase-functions-debug.log
+.storage/
+
+# Firebase Functions
+# -----------------
+functions/lib/
+functions/node_modules/
+functions/.tsbuildinfo
+functions/coverage/
+
+# Genkit AI Framework
+# ------------------
+.genkit/
+genkit-debug.log
+ai-flows-debug.log
+
+# Environment Variables & Secrets
+# -------------------------------
+.env
+.env.*
+!.env.example
+!.env.test.example
+.env.backup
+.env.development.local
+.env.production.local
+
+# Security Files
+# -------------
+*.pem
+*.p12
+*.key
+*.crt
+*.cert
+secrets/
+.secrets/
+service-account-*.json
+
+# Development Tools & IDEs
+# ------------------------
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+.cursor/
+.idx/
+.lsp/
+.clj-kondo/
+*.swp
+*.swo
+*~
+
+# OS Generated Files
+# -----------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs & Debug Files
+# -----------------
+*.log
+*.log.*
+logs/
+debug.log
+error.log
+combined.log
+emfile-debug.log
+
+# Cache & Temporary Files
+# ----------------------
+.cache/
+.tmp/
+.temp/
+*.tmp
+*.temp
+.modified
+.eslintcache
+
+# AI & ML Cache
+# -------------
+.openai-cache/
+.ai-cache/
+*.ai-cache
+model-cache/
+neuroseo-cache/
+
+# Performance & Monitoring
+# ------------------------
+performance-*.json
+metrics-*.json
+trace-*.json
+lighthouse-*.json
+
+# Windows Optimization Files
+# --------------------------
+pagefile.sys
+hiberfil.sys
+
+# Project-Specific Exclusions
+# ---------------------------
+# Temporary markdown files
+*_TEMP.md
+*_BACKUP.md
+*_OLD.md
+
+# Build artifacts
+*.map
+*.js.map
+*.css.map
+
+# Documentation build
+docs/build/
+docs/.docusaurus/
+
+# Storybook build
+storybook-static/
+
+# Bundle analyzer
+.bundle-analyzer/
+bundle-report.html
+
+# Mobile app builds (if applicable)
+*.ipa
+*.apk
+*.aab
+
+# Database dumps
+*.sql
+*.db
+*.sqlite
+
+# Backup files
+*.bak
+*.backup
+
+# Large media files (add specific extensions as needed)
+*.mov
+*.mp4
+*.avi
+*.mkv
+
+# End of optimized .gitignore
+
+# Sensitive Configuration Files
+# -----------------------------
+masterKeys.md
+docs/ENVIRONMENT_VARIABLES.md
+state.json
+MCP_CONFIGURATION_PLAN.md
+MCP_CONFIGURATION_SUMMARY.md
+mcp.json
+scripts/agents/ingested-tools.json
+
+# API Integration Documentation (contains example keys)
+# ----------------------------------------------------
+docs/integrations/api-keys/integration-summary.md
+docs/integrations/mcp-full/configuration-plan.md
+docs/integrations/mcp-full/configuration-summary.md
+docs/integrations/mcp/success-complete.md
+docs/integrations/stripe/integration-complete.md
+.aider*
+
+# --- Security hygiene (Phase 0): never commit credential exports or generated artifacts ---
+# Firebase Auth user export — contains password hashes, salts, and real user emails.
+users.json
+auth-export*.json
+firebase-auth-export*.json
+# Generated CI/build artifacts (regenerated on demand; were committed by mistake).
+lint-report*.json
+typecheck-output.txt
+artifacts/route-crawl-report.json
+
+# SECRETS.md is intentional public documentation (names only) — exempt it from the broad
+# `**/*secret*.md` rule (line ~76) so it stays tracked. (That rule is a Phase-2 cleanup candidate.)
+!/SECRETS.md

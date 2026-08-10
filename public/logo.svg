@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="RankPilot">
+  <title>RankPilot</title>
+  <defs>
+    <linearGradient id="rp-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App tile -->
+  <rect width="64" height="64" rx="15" fill="url(#rp-bg)"/>
+
+  <!-- Rising rank bars -->
+  <g fill="#FFFFFF" opacity="0.34">
+    <rect x="12" y="38" width="7" height="14" rx="2.2"/>
+    <rect x="22.5" y="31" width="7" height="21" rx="2.2"/>
+    <rect x="33" y="24" width="7" height="28" rx="2.2"/>
+  </g>
+
+  <!-- Ascending pilot mark: a paper plane climbing off the top bar -->
+  <path d="M52.6 11.7 42.4 41.2a1.15 1.15 0 0 1-2.1.12l-4.7-9.6a1.15 1.15 0 0 0-.53-.53l-9.6-4.7a1.15 1.15 0 0 1 .12-2.1l29.5-10.2a1.15 1.15 0 0 1 1.48 1.48z" fill="#FFFFFF"/>
+  <path d="M52.6 11.7 35.6 31.2l4.7 9.6a1.15 1.15 0 0 0 2.1-.12z" fill="#DBEAFE"/>
+</svg>

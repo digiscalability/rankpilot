@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "limits": {
+      "type": "object",
+      "properties": {
+        "maxLocAdded": { "type": "number" },
+        "maxFiles": { "type": "number" }
+      },
+      "required": ["maxLocAdded", "maxFiles"]
+    },
+    "tools": { "type": "object" },
+    "modes": { "type": "object" },
+    "budget": { "type": "object" },
+    "auto": { "type": "object" },
+    "governance": {
+      "type": "object",
+      "properties": {
+        "maxBatchTasks": { "type": "number" },
+        "splitThresholdLoc": { "type": "number" },
+        "budgetStrategy": { "type": "string" }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "properties": {
+        "plannerModel": { "type": "string" },
+        "temperature": { "type": "number" },
+        "maxTokens": { "type": "number" }
+      }
+    }
+  },
+  "required": ["limits"]
+}

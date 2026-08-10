@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2019",
+    "rootDir": ".",
+    "outDir": "dist/brain",
+    "skipLibCheck": true,
+    "esModuleInterop": true
+  },
+  "include": ["scripts/brain/**/*.ts", "types/**/*.ts"]
+}

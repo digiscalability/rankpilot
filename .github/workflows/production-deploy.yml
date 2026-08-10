@@ -1,0 +1,278 @@
+# 🚀 Production Deployment Workflow (Live Production)
+# Final step: staging → master (Manual PR approval required)
+# Deploys master branch to live production environment
+# Triggered ONLY on push to master (after manual PR approval from staging)
+name: "🏭 Production Stage - Live Production Deployment"
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      deploy_functions:
+        description: "Deploy Firebase Functions"
+        required: false
+        default: true
+        type: boolean
+      emergency_deployment:
+        description: "Emergency deployment (skip some checks)"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: "20"
+  FIREBASE_PROJECT_ID: "rankpilot-h3jpc"
+  # Centralized Environment URLs
+  LEAN_URL: 'https://rankpilot-h3jpc--lean-branch-testing-o2qips67.web.app'
+  PERFORMANCE_URL: 'https://rankpilot-h3jpc--performance-testing-mw0cwov5.web.app'
+  PRODUCTION_URL: 'https://rankpilot-h3jpc.web.app'
+  FIREBASE_TOOLS_VERSION: "13.31.2"
+
+jobs:
+  # Job 1: Production Build
+  production_build:
+    runs-on: ubuntu-latest
+    name: 🏗️ Production Build
+    outputs:
+      should_deploy: ${{ steps.validation.outputs.deploy }}
+      build_hash: ${{ steps.hash.outputs.value }}
+
+    steps:
+      - name: 📥 Checkout Master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📦 Install Dependencies
+        run: |
+          echo "## 📦 Production Dependencies Installation" >> $GITHUB_STEP_SUMMARY
+          npm ci --prefer-offline --no-audit --production=false
+          echo "✅ Dependencies installed" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🧬 Provenance Strict Audit (Blocking)
+        if: github.event.inputs.emergency_deployment != 'true'
+        run: |
+          echo "## 🧬 Enforcing Provenance Policy (Strict Mode)" >> $GITHUB_STEP_SUMMARY
+          PROV_STRICT=1 npm run test:provenance-audit
+          echo "✅ Provenance strict audit passed (policy enforced)" >> $GITHUB_STEP_SUMMARY
+
+  # Removed build-time runtime audit; moved post-deploy to verify live URL
+
+      - name: 🔍 Production Validation
+        if: github.event.inputs.emergency_deployment != 'true'
+        run: |
+          echo "## 🔍 Production Validation Checks" >> $GITHUB_STEP_SUMMARY
+          # Quick TypeScript check
+          echo "Running TypeScript validation..."
+          npx tsc --noEmit || {
+            echo "❌ TypeScript errors in production build" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
+          # Quick build test
+          echo "Testing production build..."
+          NODE_ENV=production npm run build
+          echo "✅ Production validation passed" >> $GITHUB_STEP_SUMMARY
+        env:
+          NODE_OPTIONS: "--max-old-space-size=3072"
+
+      - name: 🔐 Firestore Negative Security Tests (Non-blocking)
+        if: github.event.inputs.emergency_deployment != 'true'
+        run: |
+          echo "## 🔐 Firestore Negative Security Tests" >> $GITHUB_STEP_SUMMARY
+          export FIRESTORE_EMULATOR_HOST=localhost:8080
+          npx firebase emulators:start --only firestore --project demo-rankpilot &
+          EMU_PID=$!
+          for i in {1..20}; do nc -z localhost 8080 && break || sleep 1; done
+          if npm run test:security-negative; then
+            echo "✅ Security negative tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Security negative tests failed (non-blocking)" >> $GITHUB_STEP_SUMMARY
+          fi
+          kill $EMU_PID || true
+
+      - name: 🏗️ Production Build
+        run: |
+          echo "## 🏗️ Production Build Process" >> $GITHUB_STEP_SUMMARY
+          echo "Building optimized production bundle..."
+          NODE_ENV=production npm run build
+          # Build verification
+          if [ ! -d ".next" ]; then
+            echo "❌ Build failed - .next directory not found" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "✅ Production build completed successfully" >> $GITHUB_STEP_SUMMARY
+        env:
+          NODE_OPTIONS: "--max-old-space-size=3072"
+
+      - name: 🧮 Generate Build Hash
+        id: hash
+        run: |
+          BUILD_HASH=$(echo ${{ github.sha }} | cut -c1-8)
+          echo "value=$BUILD_HASH" >> $GITHUB_OUTPUT
+          echo "📊 Build Hash: $BUILD_HASH" >> $GITHUB_STEP_SUMMARY
+
+      - name: ✅ Ready for Production
+        id: validation
+        run: |
+          echo "deploy=true" >> $GITHUB_OUTPUT
+          echo "## ✅ Production Deployment Approved" >> $GITHUB_STEP_SUMMARY
+          echo "All validation checks passed. Ready for production deployment." >> $GITHUB_STEP_SUMMARY
+
+  # Job 2: Deploy to Production
+  production_deploy:
+    runs-on: ubuntu-latest
+    name: 🚀 Deploy to Production
+    needs: production_build
+    if: needs.production_build.outputs.should_deploy == 'true'
+
+    steps:
+      - name: 📥 Checkout Master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: � Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: � Install Dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🏗️ Production Build
+        run: |
+          echo "## 🏗️ Production Build for Deployment" >> $GITHUB_STEP_SUMMARY
+          NODE_ENV=production npm run build
+          echo "✅ Production build completed for deployment" >> $GITHUB_STEP_SUMMARY
+        env:
+          NODE_OPTIONS: "--max-old-space-size=3072"
+
+      - name: 🔥 Deploy to Production
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_RANKPILOT_H3JPC }}
+          projectId: ${{ env.FIREBASE_PROJECT_ID }}
+          target: production
+        env:
+          FIREBASE_CLI_EXPERIMENTS: webframeworks
+          # Production Environment Variables
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          # AI Service APIs
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          # Security & Validation
+          NEXT_PUBLIC_RECAPTCHA_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
+          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
+          # Payment Integration
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
+      - name: 🩺 Production Health Check
+        run: |
+          echo "## 🩺 Production Health Verification" >> $GITHUB_STEP_SUMMARY
+          sleep 30
+          PRODUCTION_URL="https://${{ env.FIREBASE_PROJECT_ID }}.web.app"
+          echo "🌐 Production URL: $PRODUCTION_URL" >> $GITHUB_STEP_SUMMARY
+          # Comprehensive health check
+          echo "Checking production site accessibility..."
+          curl -I "$PRODUCTION_URL" && echo "✅ Production site is accessible" >> $GITHUB_STEP_SUMMARY || {
+            echo "❌ Production site health check failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
+          # Check API health endpoint
+          curl -f "$PRODUCTION_URL/api/health" && echo "✅ API health check passed" >> $GITHUB_STEP_SUMMARY || echo "⚠️ API health endpoint not available" >> $GITHUB_STEP_SUMMARY
+
+  # Job 3: Deploy Functions (Optional)
+  deploy_functions:
+    runs-on: ubuntu-latest
+    name: ⚡ Deploy Functions
+    needs: [production_build, production_deploy]
+    if: needs.production_build.outputs.should_deploy == 'true' && (github.event.inputs.deploy_functions == 'true' || github.event.inputs.deploy_functions == '')
+
+    steps:
+      - name: 📥 Checkout Master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📦 Install Dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: ⚡ Deploy Firebase Functions
+        run: |
+          echo "## ⚡ Firebase Functions Deployment" >> $GITHUB_STEP_SUMMARY
+          npx firebase deploy --only functions --project ${{ env.FIREBASE_PROJECT_ID }} --token ${{ secrets.FIREBASE_TOKEN }}
+          echo "✅ Functions deployed successfully" >> $GITHUB_STEP_SUMMARY
+
+  # Job 4: Post-Deployment Monitoring
+  post_deployment:
+    runs-on: ubuntu-latest
+    name: 📊 Post-Deployment Monitoring
+    needs: [production_build, production_deploy]
+    if: always() && needs.production_deploy.result == 'success'
+
+    steps:
+      - name: 🌐 Runtime Provenance Audit (Production URL, Non-blocking)
+        env:
+          PROV_ORIGIN: ${{ env.PRODUCTION_URL }}
+          PROV_REQUIRE_SERVER: "1"
+          PROV_TIMEOUT_MS: "20000"
+        run: |
+          echo "## 🌐 Runtime Provenance Audit (Production URL)" >> $GITHUB_STEP_SUMMARY
+          if npm run -s test:provenance-audit; then
+            echo "✅ Runtime provenance audit passed (production)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Runtime provenance audit failed (non-blocking, production)" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: 📊 Production Performance Audit
+        run: |
+          echo "## 📊 Production Performance Audit" >> $GITHUB_STEP_SUMMARY
+          # Install Lighthouse
+          npm install -g lighthouse
+          # Run production performance audit
+          PRODUCTION_URL="https://${{ env.FIREBASE_PROJECT_ID }}.web.app"
+          lighthouse "$PRODUCTION_URL" \
+            --output=json \
+            --output-path=./lighthouse-production.json \
+            --chrome-flags="--headless --no-sandbox" \
+            --quiet || echo "⚠️ Lighthouse audit completed with warnings"
+          echo "✅ Production performance audit completed" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🎉 Deployment Success Notification
+        run: |
+          echo "## 🎉 Production Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**🌐 Production URL**: https://${{ env.FIREBASE_PROJECT_ID }}.web.app" >> $GITHUB_STEP_SUMMARY
+          echo "**📊 Build Hash**: ${{ needs.production_build.outputs.build_hash }}" >> $GITHUB_STEP_SUMMARY
+          echo "**⏰ Deployed**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All systems operational!" >> $GITHUB_STEP_SUMMARY
+
+      - name: 💾 Upload Production Metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-metrics-${{ needs.production_build.outputs.build_hash }}
+          path: lighthouse-production.json
+          retention-days: 90

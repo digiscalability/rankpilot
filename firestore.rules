@@ -1,0 +1,585 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        // Prefer custom claim when present
+        (request.auth.token.admin == true) ||
+        // Fallback to user document role flag
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Determine if the authenticated user is a member of a given team
+    function isTeamMember(teamId) {
+      return isAuthenticated() &&
+        teamId != null && (
+          // Membership via denormalized memberIds array
+          (request.auth.uid in get(/databases/$(database)/documents/teams/$(teamId)).data.memberIds) ||
+          // Membership via members subcollection
+          exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)) ||
+          // Team owner is implicitly a member
+          get(/databases/$(database)/documents/teams/$(teamId)).data.ownerId == request.auth.uid
+        );
+    }
+
+    // Determines if the authenticated user has elevated team role (owner/admin) via members subcollection.
+    function isTeamOwner(teamId) {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/teams/$(teamId)).data.ownerId == request.auth.uid;
+    }
+
+    function isTeamAdminRole(teamId) {
+      return isTeamOwner(teamId) || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)) &&
+        (
+          get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role == 'admin' ||
+          get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role == 'owner'
+        )
+      );
+    }
+
+    // Organization membership helper (denormalized memberships collection)
+    function isOrgMember(orgId) {
+      return isAuthenticated() && (
+        exists(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid)) ||
+        // Optional: orgs/{orgId} may contain memberIds array
+        (request.auth.uid in get(/databases/$(database)/documents/orgs/$(orgId)).data.memberIds)
+      );
+    }
+
+    // By default, deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User profiles - Enhanced RBAC
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+
+      // User activities subcollection
+      match /activities/{activityId} {
+        allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+        allow create: if isAuthenticated() && isOwner(userId);
+        allow update: if isAuthenticated() && isOwner(userId);
+        allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      }
+
+      // User usage tracking subcollection
+      match /usage/{usageId} {
+        allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+        allow create: if isAuthenticated() && isOwner(userId);
+        allow update: if isAuthenticated() && isOwner(userId);
+        allow delete: if isAdmin();
+      }
+    }
+
+    // SEO audits collection - Enhanced with usage limits
+    match /audits/{auditId} {
+      allow read: if isValidUser() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isValidUser() && (
+        request.resource.data.userId == request.auth.uid
+      );
+      allow update, delete: if isValidUser() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Nested audits structure (user-scoped URLs) — align with app reads: collection(db, 'audits', uid, 'urls')
+    match /audits/{userId} {
+      // Guard parent doc in case it is used to store metadata
+      allow read, create, update, delete: if isOwner(userId) || isAdmin();
+      // URLs subcollection under a user-scoped audits document
+      match /urls/{docId} {
+        allow read, create, update, delete: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Keywords collection
+    match /keywords/{keywordId} {
+      allow read: if isValidUser() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isValidUser() && (
+        request.resource.data.userId == request.auth.uid
+      );
+      allow update, delete: if isValidUser() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Rate limiting collection - Enhanced
+    match /rateLimits/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId) && (
+        request.time.toMillis() - (resource == null ? 0 : resource.data.lastRequest.toMillis()) > 1000
+      );
+    }
+
+    // Subscription data
+    // Doc shape may include teamId when a subscription is team-owned. Permit team members to read.
+    match /subscriptions/{userId} {
+      allow read: if isAuthenticated() && (
+        isOwner(userId) ||
+        isAdmin() ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId))
+      );
+      // Writes restricted to owner or admin only; team members cannot mutate subscription docs client-side
+      allow create, update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Usage quotas and limits
+    match /quotas/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create, update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // NeuroSEO™ Analyses Collection - NEW
+    match /neuroSeoAnalyses/{analysisId} {
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Keyword Research Collection - NEW
+    match /keywordResearch/{researchId} {
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Usage Tracking Collection - NEW
+    match /usage/{usageId} {
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Projects Collection - FIXED MISSING RULES
+    match /projects/{projectId} {
+    allow read: if isAuthenticated() && (
+             // Owner can read
+             resource.data.userId == request.auth.uid
+             // Team members can read team projects
+             || (resource.data.teamId != null && isTeamMember(resource.data.teamId))
+             // Admin override
+             || isAdmin()
+           );
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() &&
+             (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Backlinks Collection - FIXED MISSING RULES
+    match /backlinks/{backlinkId} {
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Domain Authority Collection - FIXED MISSING RULES
+    match /domainAuthority/{domainId} {
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // CRITICAL MISSING COLLECTIONS - Fix for localhost errors
+
+    // SEO Audits Collection - MISSING RULES CAUSING PERMISSION ERRORS
+    match /seoAudits/{auditId} {
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Teams Collection - tightened (TEAM-01 Phase 1)
+    match /teams/{teamId} {
+      // Read allowed only for members or admin
+        allow read: if isTeamMember(teamId) || isAdmin();
+      // Creation: owner must be creator and included in memberIds
+        allow create: if isAuthenticated() && request.auth.uid == request.resource.data.ownerId && (request.auth.uid in request.resource.data.memberIds);
+      // Update: permit owner or team admin for non-destructive fields; delete remains admin only
+        allow update: if isTeamAdminRole(teamId) || isAdmin();
+        allow delete: if isAdmin();
+
+      // Phase 2: Membership subcollection
+      match /members/{memberId} {
+        allow read: if isTeamMember(teamId) || isAdmin();
+        // Owner/admin can add members; server-side logic enforces invariants
+        allow create: if isTeamMember(teamId) && (
+          get(/databases/$(database)/documents/teams/$(teamId)).data.ownerId == request.auth.uid || isAdmin()
+        );
+        allow update: if isTeamMember(teamId) && (
+          get(/databases/$(database)/documents/teams/$(teamId)).data.ownerId == request.auth.uid || isAdmin()
+        );
+        allow delete: if isTeamMember(teamId) && (
+          get(/databases/$(database)/documents/teams/$(teamId)).data.ownerId == request.auth.uid || isAdmin()
+        );
+      }
+
+      // Phase 2: Invites subcollection (email‐based pending invites)
+      match /invites/{inviteId} {
+        // States: pending | accepted | expired
+        // Note: Firestore rules do not support lower()/toLowerCase; ensure emails
+        // are normalized (lowercased) at write time in both invite.email and users/{uid}.email.
+        allow read: if isTeamMember(teamId) || isAdmin() || (
+          isAuthenticated() && resource.data.email != null &&
+          resource.data.email == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email
+        );
+        allow create: if isTeamMember(teamId) && (
+          get(/databases/$(database)/documents/teams/$(teamId)).data.ownerId == request.auth.uid || isAdmin()
+        );
+        // Only allow status transitions server-side except accept by invited user
+        allow update: if (
+          // Admins can modify
+          isAdmin() ||
+          // Invited user can mark their invite accepted (write acceptedAt)
+          (
+            // See note above re: email normalization
+            isAuthenticated() && resource.data.email != null && resource.data.email == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email &&
+            request.resource.data.status == 'accepted' && resource.data.status == 'pending'
+          )
+        );
+        // Deletion only by admin or team owner
+        allow delete: if isAdmin() || get(/databases/$(database)/documents/teams/$(teamId)).data.ownerId == request.auth.uid;
+      }
+    }
+
+    // Invites Index - mirrors status for queries and cleanup
+    match /invites_index/{inviteId} {
+      allow read: if isAuthenticated();
+      // Writes only by server (via Admin SDK / Functions). Deny client writes.
+      allow create, update, delete: if false;
+    }
+
+    // Integrations collection (if used in UI)
+    match /integrations/{integrationId} {
+      allow read: if isAuthenticated() || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Link Analyses Collection - MISSING RULES CAUSING PERMISSION ERRORS
+    match /linkAnalyses/{analysisId} {
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Sales Deals Collection - NEW
+    match /salesDeals/{dealId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Sales Metrics Snapshots (automation outputs) — client read-only
+    match /salesMetricsSnapshots/{snapshotId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow create, update, delete: if false; // written by server/automation only
+    }
+
+    // Sales Forecast Snapshots (automation outputs) — client read-only
+    match /salesForecastSnapshots/{snapshotId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow create, update, delete: if false; // written by server/automation only
+    }
+
+    // Site Content Pages per user — used by getSiteContext(uid)
+    match /siteContent/{userId} {
+      match /pages/{pageId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update, delete: if false; // written via server ingestion pipeline only
+      }
+    }
+
+    // Activity Logs — admin-only visibility
+    match /activityLogs/{logId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // Marketing Campaigns Collection - NEW
+    match /marketingCampaigns/{campaignId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+  // Duplicate salesForecastSnapshots rule block removed (defined above)
+
+    // Finance Invoices Collection - NEW
+    match /financeInvoices/{invoiceId} {
+      // Permit read if user owns invoice, is team member of invoice.teamId, or admin
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.userId);
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Automation Recipes (project-scoped)
+    match /automationRecipes/{recipeId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && (
+        request.auth.uid == request.resource.data.userId
+      );
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Automation Runs (read-only for clients; writes by server/automation)
+    match /automationRuns/{runId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow create, update, delete: if false; // server only
+    }
+
+    // Email Queue (read only counts; no client writes)
+    match /emailQueue/{itemId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow create, update, delete: if false; // server only
+    }
+
+    // Neural Crawler History (project-scoped)
+    match /neuralCrawlerHistory/{historyId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated() && (
+        request.auth.uid == request.resource.data.userId
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Neural Crawler Results (legacy full docs) - allow read; writes server or guarded client
+    match /neuralCrawlerResults/{resultId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated() && (
+        request.auth.uid == request.resource.data.userId
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Neural Crawler Aggregate (compact docs) - read for owner/team; writes server only
+    match /neuralCrawlerResultsAgg/{aggId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.teamId != null && isTeamMember(resource.data.teamId)) ||
+        isAdmin()
+      );
+      allow create, update, delete: if false; // server/automation only
+    }
+
+    // Rate Limiting Buckets - server-managed only
+    // Team-level fixed window counters
+    match /teamRateLimits/{docId} {
+      // Never allow client writes; optional read for admins only
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // NeuroSEO scope-level rate limits (user/team)
+    match /neuroseoRateLimits/{docId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // Content Briefs Collection - NEW (historical seeding)
+    match /contentBriefs/{briefId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Competitor Analyses Collection - NEW (historical seeding)
+    match /competitorAnalyses/{analysisId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // SERP Data Collection - NEW (historical seeding)
+    match /serpData/{serpId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // User Presence System - Fix for presence tracking errors
+    match /presence/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Team Chat System - Fix for team management errors
+    match /teamChats/{teamId} {
+      // Team messages subcollection
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && isTeamMember(teamId);
+        allow create: if isAuthenticated() && isTeamMember(teamId);
+        allow update, delete: if isAuthenticated() && isTeamMember(teamId);
+      }
+    }
+
+  // Presence (deduplicated consolidated rule)
+  // already defined above; avoid duplicate match blocks
+
+    // Team Reports
+    match /teams/{teamId}/reports/{reportId} {
+      allow read: if isAuthenticated() && isTeamMember(teamId);
+      allow create: if isAuthenticated() && isTeamMember(teamId);
+      allow update, delete: if isAuthenticated() && isTeamMember(teamId);
+    }
+
+    // Support Messages - Admin Inbox
+    match /supportMessages/{messageId} {
+      // Admins can view and manage support messages
+      allow read: if isAdmin();
+      allow create: if false; // Created by server via Admin SDK only
+      allow update, delete: if isAdmin();
+
+      // Replies subcollection
+      match /replies/{replyId} {
+        allow read: if isAdmin();
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // Events Backbone (T26/T27) — immutable create-only
+    match /orgs/{orgId}/events/{eventId} {
+      allow create: if request.auth != null && request.resource.data.orgId == orgId && isOrgMember(orgId);
+      allow update, delete: if false;
+      // Read gated by org membership
+      allow get, list: if isOrgMember(orgId) || isAdmin();
+    }
+
+    // Voice Calls (status stream) — client read, server write only
+    match /voice_calls/{callId} {
+      // Allow reads for authenticated users in dev, or for owners/team members when metadata is present
+      allow read: if isAuthenticated();
+      // Client writes disabled; updates are from server-side (Admin SDK / Functions)
+      allow create, update, delete: if false;
+    }
+
+    // Voice outbound queue — server only
+    match /voice_outbound_queue/{itemId} {
+      allow read, create, update, delete: if false;
+    }
+  }
+}
