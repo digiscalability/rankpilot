@@ -1,8 +1,6 @@
 name: 🗓️ NeuroSEO Size Snapshot (Daily)
 
 on:
-  schedule:
-    - cron: "15 2 * * *"
   workflow_dispatch: {}
 
 env:
