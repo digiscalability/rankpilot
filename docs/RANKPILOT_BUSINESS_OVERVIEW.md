@@ -13,7 +13,7 @@ RankPilot is an AI‑first SEO and growth platform combining site intelligence (
 
 ## 2. User Journey (End‑to‑End)
 
-See `.github/instructions/user-journey-contract.md` for the canonical contract. Highlights:
+See `docs/user-journey-contract.md` for the canonical contract. Highlights:
 
 - Onboarding: 7‑day trial, plan selection, domain connect, wizard
 - Settings: Profile/company, i18n, theme/accessibility, notifications, data sharing

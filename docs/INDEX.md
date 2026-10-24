@@ -4,11 +4,9 @@ Quick links to key documentation for RankPilot.
 
 - Getting started
   - `README.md` – project overview and setup
-  - `AGENTS.md` – agent handbook
+  - `AGENTS.md` – points to the agent instructions in `CLAUDE.md`
 - Architecture & patterns
-  - `.github/instructions/user-journey-contract.md`
-  - `.github/instructions/agent-playbooks.md`
-  - `.github/instructions/copilot-delta-guide.md`
+  - `docs/user-journey-contract.md` – UX flow and feature-key contract
   - `FEATURE_KEYS.md` – feature gating registry
   - `src/lib/logging/app-logger.ts` – structured logging
 - Development workflows
